@@ -1,5 +1,5 @@
 import { clearSession, getSession } from "./auth";
-import type { AdminSession, Category, Product, ProductImage, ProductListResponse } from "../types";
+import type { AdminSession, AiEditResponse, Category, Product, ProductImage, ProductListResponse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -79,6 +79,20 @@ export const api = {
     }),
   deleteImage: (productId: string, imageId: string) =>
     request<void>(`/api/products/${productId}/images/${imageId}`, { method: "DELETE" }),
+
+  requestImageEdit: (productId: string, imageId: string, instruction: string) =>
+    request<AiEditResponse>(`/api/products/${productId}/images/${imageId}/edit`, {
+      method: "POST",
+      body: JSON.stringify({ instruction }),
+    }),
+  confirmImageEdit: (productId: string, imageId: string, editId: string) =>
+    request<ProductImage>(`/api/products/${productId}/images/${imageId}/edit/${editId}/confirm`, {
+      method: "POST",
+    }),
+  discardImageEdit: (productId: string, imageId: string, editId: string) =>
+    request<void>(`/api/products/${productId}/images/${imageId}/edit/${editId}/discard`, { method: "POST" }),
+  revertImage: (productId: string, imageId: string) =>
+    request<ProductImage>(`/api/products/${productId}/images/${imageId}/revert`, { method: "POST" }),
 };
 
 export async function uploadImageToR2(productId: string, file: File): Promise<ProductImage> {

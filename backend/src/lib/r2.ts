@@ -1,4 +1,4 @@
-import { S3Client, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, DeleteObjectCommand, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { env } from "./env";
@@ -44,4 +44,25 @@ export async function createPresignedUpload(productId: string, fileName: string,
 
 export async function deleteObject(key: string): Promise<void> {
   await r2Client.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+}
+
+export async function getObjectBuffer(key: string): Promise<Buffer> {
+  const res = await r2Client.send(new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+  const chunks: Buffer[] = [];
+  for await (const chunk of res.Body as AsyncIterable<Buffer>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+export async function putObject(
+  key: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<{ key: string; publicUrl: string }> {
+  await r2Client.send(
+    new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key, Body: buffer, ContentType: contentType })
+  );
+  const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+  return { key, publicUrl };
 }

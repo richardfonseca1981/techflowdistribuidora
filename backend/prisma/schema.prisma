@@ -73,7 +73,41 @@ model ProductImage {
   key      String // chave do objeto no bucket R2 (para permitir exclusão futura)
   position Int    @default(0)
 
+  // Undo de 1 nível: quando uma edição de IA é confirmada, url/key atuais
+  // são movidos para cá antes de serem sobrescritos pelo preview confirmado.
+  previousUrl String?
+  previousKey String?
+
   createdAt DateTime @default(now())
 
+  edits ProductImageEdit[]
+
   @@index([productId])
+}
+
+enum ProductImageEditStatus {
+  PENDING
+  CONFIRMED
+  DISCARDED
+}
+
+// Cada instrução de edição de foto interpretada pela IA (tratamento sob
+// demanda). Guarda um preview separado da imagem em produção até o admin
+// confirmar — nunca sobrescreve ProductImage.url/key diretamente.
+model ProductImageEdit {
+  id             String       @id @default(cuid())
+  productImageId String
+  productImage   ProductImage @relation(fields: [productImageId], references: [id], onDelete: Cascade)
+
+  instruction String
+  operations  Json // lista validada (Zod) das operações aplicadas nesta preview
+
+  previewUrl String
+  previewKey String
+
+  status ProductImageEditStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  @@index([productImageId])
 }

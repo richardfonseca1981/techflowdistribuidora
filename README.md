@@ -10,6 +10,8 @@ veja [O que falta para a próxima fase](#o-que-falta-para-a-próxima-fase).
 - **Backend**: Node.js + Express + TypeScript + Prisma 5.22.0 + PostgreSQL
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS
 - **Imagens**: Cloudflare R2 (upload via URL assinada, compatível com S3)
+- **IA**: Claude Haiku 4.5 (Anthropic API) para interpretar instruções de
+  edição de foto sob demanda; execução via Sharp
 - **Testes**: Vitest + Supertest (backend)
 - **Deploy alvo** (não configurado nesta fase): Railway (backend/DB) + Vercel (frontend)
 
@@ -66,6 +68,10 @@ Edite `backend/.env`:
 - `JWT_SECRET` — troque por um valor aleatório forte.
 - `R2_*` — credenciais do Cloudflare R2 (opcional para rodar localmente sem
   testar upload de imagens; as rotas de upload retornam erro 503 se ausentes).
+- `ANTHROPIC_API_KEY` — chave da API da Anthropic, usada só para interpretar
+  instruções de edição de foto sob demanda no painel admin (opcional para
+  rodar localmente sem testar essa funcionalidade; a rota de edição retorna
+  erro 503 se ausente).
 
 ### 4. Criar o banco de testes (uma vez)
 
@@ -162,6 +168,33 @@ Para isso funcionar, o bucket R2 precisa de uma política de CORS liberando
 bucket precisa de um domínio público (customizado ou `*.r2.dev`) configurado
 em `R2_PUBLIC_URL`.
 
+## Tratamento de foto sob demanda (IA)
+
+Nunca automático — só roda quando o admin submete um texto explícito no
+`ImageManager` de uma foto já cadastrada (ex: "deixa mais nítida e corta
+quadrado").
+
+1. `POST /api/products/:id/images/:imageId/edit` — o texto do admin é
+   enviado ao Claude Haiku 4.5 (`ANTHROPIC_API_KEY`) com `tool_choice`
+   forçado e uma lista **fechada** de operações (`resize`, `crop`,
+   `brightness`, `contrast`, `sharpen`, `rotate`, `compress`,
+   `convertFormat`). Se o pedido não for claro, a resposta é
+   `{unclear: true, suggestion}` e nada é alterado. Se for claro, o backend
+   revalida a resposta via Zod (lista fechada + ranges numéricos — nunca
+   confia na IA cegamente), aplica as operações com Sharp e sobe o
+   resultado ao R2 como um preview separado (`ProductImageEdit`, status
+   `PENDING`) — a imagem em produção não é tocada.
+2. `POST .../edit/:editId/confirm` — só agora o preview vira a imagem
+   oficial do produto; a versão anterior fica salva em
+   `ProductImage.previousUrl`/`previousKey` (undo de 1 nível).
+3. `POST .../edit/:editId/discard` — descarta o preview sem alterar a
+   imagem atual.
+4. `POST .../revert` — alterna entre a versão atual e a anterior (chamar de
+   novo desfaz o revert).
+
+Sem `ANTHROPIC_API_KEY` configurada, `POST .../edit` responde 503, no mesmo
+padrão do presign do R2 sem credenciais.
+
 ## Regras do projeto
 
 - **Nunca** `prisma db push` em produção — sempre `prisma migrate dev` (dev) /
@@ -184,9 +217,13 @@ em `R2_PUBLIC_URL`.
 - CRUD leve de categorias (criar, listar, editar `attributeSchema`)
 - Upload de imagens via URL assinada do R2, com reordenação (`position`) e
   exclusão
+- Tratamento de foto sob demanda via IA: instrução em texto → Claude Haiku
+  4.5 decide operações de uma lista fechada → backend revalida → Sharp
+  aplica → preview → confirmação explícita; undo de 1 nível (ver seção
+  abaixo)
 - Painel admin (React): login, lista de produtos, formulário de
   criação/edição com campos dinâmicos por categoria, upload/reordenação de
-  fotos
+  fotos, edição de foto assistida por IA
 - Testes de integração (Vitest + Supertest) cobrindo produtos, auth e o
   fluxo de atributos flexíveis
 - `docker-compose.yml` para subir um Postgres local dedicado ao projeto

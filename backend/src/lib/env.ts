@@ -14,6 +14,7 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().optional().default(""),
   R2_ENDPOINT: z.string().optional().default(""),
   R2_PUBLIC_URL: z.string().optional().default(""),
+  ANTHROPIC_API_KEY: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);
