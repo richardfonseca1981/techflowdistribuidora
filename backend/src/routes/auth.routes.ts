@@ -12,25 +12,30 @@ export const authRouter = Router();
 authRouter.post(
   "/login",
   asyncHandler(async (req, res) => {
-    const { email, password } = loginSchema.parse(req.body);
+    try {
+      const { username, password } = loginSchema.parse(req.body);
 
-    const admin = await prisma.adminUser.findUnique({ where: { email } });
-    if (!admin || !admin.active) {
-      throw new HttpError(401, "Credenciais inválidas");
+      const admin = await prisma.adminUser.findUnique({ where: { username } });
+      if (!admin || !admin.active) {
+        throw new HttpError(401, "Usuário ou senha incorretos");
+      }
+
+      const passwordMatches = await bcrypt.compare(password, admin.passwordHash);
+      if (!passwordMatches) {
+        throw new HttpError(401, "Usuário ou senha incorretos");
+      }
+
+      const token = jwt.sign({ sub: admin.id, username: admin.username, role: admin.role }, env.JWT_SECRET, {
+        expiresIn: env.JWT_EXPIRES_IN,
+      } as jwt.SignOptions);
+
+      res.json({
+        token,
+        admin: { id: admin.id, username: admin.username, role: admin.role },
+      });
+    } catch (err) {
+      console.error("[auth.routes] Falha no login:", err);
+      throw err;
     }
-
-    const passwordMatches = await bcrypt.compare(password, admin.passwordHash);
-    if (!passwordMatches) {
-      throw new HttpError(401, "Credenciais inválidas");
-    }
-
-    const token = jwt.sign({ sub: admin.id, email: admin.email, role: admin.role }, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN,
-    } as jwt.SignOptions);
-
-    res.json({
-      token,
-      admin: { id: admin.id, email: admin.email, role: admin.role },
-    });
   })
 );

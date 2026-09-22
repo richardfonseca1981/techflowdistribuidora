@@ -3,14 +3,20 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { env } from "./env";
 
-export const r2Client = new S3Client({
-  region: "auto",
-  endpoint: env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-  },
-});
+let client: S3Client | null = null;
+function getClient(): S3Client {
+  if (!client) {
+    client = new S3Client({
+      region: "auto",
+      endpoint: env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return client;
+}
 
 const PRESIGNED_URL_TTL_SECONDS = 60 * 5; // 5 minutos para completar o upload
 
@@ -36,18 +42,18 @@ export async function createPresignedUpload(productId: string, fileName: string,
     ContentType: contentType,
   });
 
-  const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: PRESIGNED_URL_TTL_SECONDS });
+  const uploadUrl = await getSignedUrl(getClient(), command, { expiresIn: PRESIGNED_URL_TTL_SECONDS });
   const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
 
   return { uploadUrl, key, publicUrl };
 }
 
 export async function deleteObject(key: string): Promise<void> {
-  await r2Client.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+  await getClient().send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
 }
 
 export async function getObjectBuffer(key: string): Promise<Buffer> {
-  const res = await r2Client.send(new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+  const res = await getClient().send(new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
   const chunks: Buffer[] = [];
   for await (const chunk of res.Body as AsyncIterable<Buffer>) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -60,7 +66,7 @@ export async function putObject(
   buffer: Buffer,
   contentType: string
 ): Promise<{ key: string; publicUrl: string }> {
-  await r2Client.send(
+  await getClient().send(
     new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key, Body: buffer, ContentType: contentType })
   );
   const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
