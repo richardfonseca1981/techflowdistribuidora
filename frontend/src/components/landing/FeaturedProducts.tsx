@@ -29,7 +29,7 @@ export function FeaturedProducts({ whatsappHref }: { whatsappHref: string | null
                     href={`${whatsappHref}?text=${encodeURIComponent(`Olá! Tenho interesse em saber mais sobre: ${product.name}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center justify-center rounded-lg border border-[#1B3A6B] px-4 py-2 text-sm font-semibold text-[#1B3A6B] transition hover:bg-[#EFF6FF]"
+                    className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#D97706]"
                   >
                     Saiba mais
                   </a>
@@ -52,7 +52,7 @@ export function FeaturedProducts({ whatsappHref }: { whatsappHref: string | null
               href={`${whatsappHref}?text=${encodeURIComponent("Olá! Gostaria de conhecer o catálogo completo de produtos.")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-[#1B3A6B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152D54]"
+              className="inline-flex items-center justify-center rounded-full bg-[#F59E0B] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#D97706]"
             >
               Visualizar todos os produtos
             </a>
