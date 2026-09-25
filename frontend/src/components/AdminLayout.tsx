@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearSession, getSession } from "../lib/auth";
 
@@ -5,6 +6,10 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const session = getSession();
+
+  useEffect(() => {
+    document.title = "TechFlow Admin";
+  }, []);
 
   function handleLogout() {
     clearSession();
@@ -16,7 +21,10 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <aside className="flex w-56 flex-shrink-0 flex-col bg-[#1B3A6B] text-white">
-        <div className="px-5 py-5 text-sm font-semibold tracking-wide">Site Vendas Óleo</div>
+        <div className="border-b border-white/10 px-5 py-5">
+          <div className="text-sm font-bold tracking-wide text-white">TechFlow Distribuidora</div>
+          <div className="text-xs font-medium text-white/60">Painel Admin</div>
+        </div>
         <nav className="mt-2 flex flex-col gap-1 px-3">
           <Link
             to="/produtos"
